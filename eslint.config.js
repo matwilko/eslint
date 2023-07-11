@@ -98,7 +98,10 @@ module.exports = [
             "internal-rules": internalPlugin
         },
         languageOptions: {
-            ecmaVersion: "latest"
+            ecmaVersion: "latest",
+            parserOptions: {
+                ecmaVersion: 13
+            }
         },
         rules: {
             "internal-rules/multiline-comment-style": "error"

@@ -52,6 +52,86 @@ function createCustomTeardown({ cwd, files }) {
     return { prepare, cleanup, getPath };
 }
 
+/**
+ * Generates a array of numbers from 0 to count - 1
+ * @param {number} count The number of integers to generate
+ * @returns {number[]} An array containing the integers from 0 to count - 1
+ */
+function range(count) {
+    const arr = Array(count);
+
+    for (let i = 0; i < count; i++) {
+        arr[i] = i;
+    }
+
+    return arr;
+}
+
+/**
+ * Geenrate random integer between min (inclusive) and max (exclusive)
+ * @param {number} min The lower bound (inclusive)
+ * @param {number} max The upper bound (exclusive)
+ * @returns {number} A random integer between min (inclusive) and max (exclusive)
+ */
+function randomInRange(min, max) {
+    const integerMin = Math.ceil(min);
+    const integerMax = Math.floor(max);
+
+    return Math.floor(Math.random() * (integerMax - integerMin)) + integerMin;
+}
+
+/**
+ * Tests whether the elements of the two given arrays are equivalent, using strict equality for comparison.
+ * @param {any[]} a The first array
+ * @param {any[]} b The second array
+ * @returns {boolean} True if the arrays are equivalent, false otherwise
+ */
+function arrayStrictEqual(a, b) {
+    if (a.length !== b.length) {
+        return false;
+    }
+
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Returns a shuffled copy of the given array, with a guaranteed different order.
+ * @param {any[]} arr The array to shuffle
+ * @returns {any[]} The shuffled array
+ */
+function shuffle(arr) {
+    if (arr.length < 2) {
+        return [...arr];
+    }
+
+    if (arr.length === 2) {
+        return [arr[1], arr[0]];
+    }
+
+    const shuffledArray = new Array(arr.length);
+
+    do {
+        for (let i = 0; i < arr.length; i++) {
+            const indexToInsert = randomInRange(0, i + 1);
+
+            if (indexToInsert !== i) {
+                shuffledArray[i] = shuffledArray[indexToInsert];
+            }
+
+            shuffledArray[indexToInsert] = arr[i];
+        }
+    } while (arrayStrictEqual(arr, shuffledArray));
+
+    return shuffledArray;
+}
+
+
 //-----------------------------------------------------------------------------
 // Exports
 //-----------------------------------------------------------------------------
@@ -59,5 +139,9 @@ function createCustomTeardown({ cwd, files }) {
 module.exports = {
     unIndent,
     defineInMemoryFs,
-    createCustomTeardown
+    createCustomTeardown,
+    range,
+    randomInRange,
+    arrayStrictEqual,
+    shuffle
 };
