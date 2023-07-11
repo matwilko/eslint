@@ -5,6 +5,7 @@
 
 "use strict";
 
+const { get } = require("core-js/core/dict");
 //-----------------------------------------------------------------------------
 // Requirements
 //-----------------------------------------------------------------------------
@@ -13,6 +14,7 @@ const {
     parseRuleId,
     getRuleFromConfig
 } = require("../../../lib/config/flat-config-helpers");
+const rules = require("../../../lib/rules");
 const assert = require("chai").assert;
 
 //-----------------------------------------------------------------------------
@@ -97,6 +99,20 @@ describe("Config Helpers", () => {
             assert.strictEqual(result, rule);
 
         });
+    });
+
+    describe("validateJsonSchemaOnlyAcceptsArraysAtTopLevel", () => {
+
+        describe("sanity check against built-in rules schemas", () => {
+            for (const [ruleName, rule] of rules) {
+                if (typeof rule.meta.schema === "object") {
+                    it(`should return true for the schema for ${ruleName}`, () => {
+                        assert.isTrue(validateJsonSchemaOnlyAcceptsArraysAtTopLevel(rule));
+                    });
+                }
+            }
+        })
+
     });
 
 });
