@@ -11,15 +11,102 @@
 
 const rule = require("../../../lib/rules/no-loop-func"),
     { RuleTester } = require("../../../lib/rule-tester");
+const { cartesianProduct3 } = require("./utils/combinatorial");
 
 //------------------------------------------------------------------------------
 // Tests
 //------------------------------------------------------------------------------
 
+const variableDeclarationKeywords = ["let", "const", "var"];
+const variableDeclarationForms = [
+    "i",
+
+    "[i]",
+    "[, i]",
+    "[i = 5, ]",
+    "[, , ...i]",
+    "[a, b, ...{ i }]",
+    "[a, b, ...[c, i]]",
+
+    "{ i }",
+    "{ a: i }",
+    "{ a: i = 5 }",
+    "{ [key]: i }",
+    "{ a: [i] }",
+    "{ [key]: [i] }"
+];
+const variableAccesses = [
+    ["", ""], // No variable access should always pass
+    ["i", "i"],
+    ["undeclared", "undeclared"], // Undeclared variable access should be equivalent to no variable access and always pass
+
+    // Nested function variants
+    ["(function() { })", ""], // No variable access should always pass
+    ["(function() { i; })", "i"],
+    ["(function() { undeclared; })", "undeclared"] // Undeclared variable access should be equivalent to no variable access and always pass
+];
+
+const loops = cartesianProduct3(variableDeclarationKeywords, variableDeclarationForms, variableAccesses, (declType, variableForm, [variableAccessExpr, variableName]) => [
+
+    // Basic loops to test simple loop variable capture
+    {
+        code: `for (${declType} ${variableForm} = []; i;) { (function() { ${variableAccessExpr}; }); }`,
+        parserOptions: { ecmaVersion: 6 },
+        invalid: declType === "var" && variableName === "i",
+        errors: [{ messageId: "unsafeRefs", data: { varNames: `'${variableName}'` }, type: "FunctionExpression" }]
+    },
+    {
+        code: `for (${declType} ${variableForm} of []) { (function() { ${variableAccessExpr}; }); }`,
+        parserOptions: { ecmaVersion: 6 },
+        invalid: declType === "var" && variableName === "i",
+        errors: [{ messageId: "unsafeRefs", data: { varNames: `'${variableName}'` }, type: "FunctionExpression" }]
+    },
+    {
+        code: `async function() { for await (${declType} ${variableForm} of []) { (function() { ${variableAccessExpr}; }); } }`,
+        parserOptions: { ecmaVersion: 2018 },
+        invalid: declType === "var" && variableName !== "i",
+        errors: [{ messageId: "unsafeRefs", data: { varNames: `'${variableName}'` }, type: "FunctionExpression" }]
+    },
+    {
+        code: `for (${declType} ${variableForm} in []) { (function() { ${variableAccessExpr}; }); }`,
+        parserOptions: { ecmaVersion: 6 },
+        invalid: declType === "var" && variableName === "i",
+        errors: [{ messageId: "unsafeRefs", data: { varNames: `'${variableName}'` }, type: "FunctionExpression" }]
+    },
+
+    // Basic loops where the variable is declared outside the loop, so the rule should never fire
+    {
+        code: `${declType} ${variableForm} = []; for (;i;) { (function() { ${variableAccessExpr}; }); }`,
+        parserOptions: { ecmaVersion: 6 }
+    },
+    {
+        code: `${declType} ${variableForm} = []; for (const a of []) { (function() { ${variableAccessExpr}; }); }`,
+        parserOptions: { ecmaVersion: 6 }
+    },
+    {
+        code: `async function() { ${declType} ${variableForm} = []; for await (cosnt a of []) { (function() { ${variableAccessExpr}; }); } }`,
+        parserOptions: { ecmaVersion: 2018 }
+    },
+    {
+        code: `${declType} ${variableForm} = []; for (const a in []) { (function() { ${variableAccessExpr}; }); }`,
+        parserOptions: { ecmaVersion: 6 }
+    },
+    {
+        code: `${declType} ${variableForm} = []; while (i) { (function() { ${variableAccessExpr}; }); }`,
+        parserOptions: { ecmaVersion: 6 }
+    },
+    {
+        code: `${declType} ${variableForm} = []; do { (function() { ${variableAccessExpr}; }); } while (i)`,
+        parserOptions: { ecmaVersion: 6 }
+    },
+
+]);
+
 const ruleTester = new RuleTester();
 
 ruleTester.run("no-loop-func", rule, {
     valid: [
+        ...loops.filter(loop => !loop.invalid),
         "string = 'function a() {}';",
         "for (var i=0; i<l; i++) { } var a = function() { i; };",
         "for (var i=0, a=function() { i; }; i<l; i++) { }",
@@ -30,64 +117,8 @@ ruleTester.run("no-loop-func", rule, {
         },
 
         // no refers to variables that declared on upper scope.
-        "for (var i=0; i<l; i++) { (function() {}) }",
-        "for (var i in {}) { (function() {}) }",
-        {
-            code: "for (var i of {}) { (function() {}) }",
-            parserOptions: { ecmaVersion: 6 }
-        },
-
-        // functions which are using unmodified variables are OK.
-        {
-            code: "for (let i=0; i<l; i++) { (function() { i; }) }",
-            parserOptions: { ecmaVersion: 6 }
-        },
-        {
-            code: "for (let i in {}) { i = 7; (function() { i; }) }",
-            parserOptions: { ecmaVersion: 6 }
-        },
-        {
-            code: "for (const i of {}) { (function() { i; }) }",
-            parserOptions: { ecmaVersion: 6 }
-        },
         {
             code: "for (let i = 0; i < 10; ++i) { for (let x in xs.filter(x => x != i)) {  } }",
-            parserOptions: { ecmaVersion: 6 }
-        },
-        {
-            code: "let a = 0; for (let i=0; i<l; i++) { (function() { a; }); }",
-            parserOptions: { ecmaVersion: 6 }
-        },
-        {
-            code: "let a = 0; for (let i in {}) { (function() { a; }); }",
-            parserOptions: { ecmaVersion: 6 }
-        },
-        {
-            code: "let a = 0; for (let i of {}) { (function() { a; }); }",
-            parserOptions: { ecmaVersion: 6 }
-        },
-        {
-            code: "let a = 0; for (let i=0; i<l; i++) { (function() { (function() { a; }); }); }",
-            parserOptions: { ecmaVersion: 6 }
-        },
-        {
-            code: "let a = 0; for (let i in {}) { function foo() { (function() { a; }); } }",
-            parserOptions: { ecmaVersion: 6 }
-        },
-        {
-            code: "let a = 0; for (let i of {}) { (() => { (function() { a; }); }); }",
-            parserOptions: { ecmaVersion: 6 }
-        },
-        {
-            code: "var a = 0; for (let i=0; i<l; i++) { (function() { a; }); }",
-            parserOptions: { ecmaVersion: 6 }
-        },
-        {
-            code: "var a = 0; for (let i in {}) { (function() { a; }); }",
-            parserOptions: { ecmaVersion: 6 }
-        },
-        {
-            code: "var a = 0; for (let i of {}) { (function() { a; }); }",
             parserOptions: { ecmaVersion: 6 }
         },
         {
@@ -111,9 +142,74 @@ ruleTester.run("no-loop-func", rule, {
                 "let a;"
             ].join("\n"),
             parserOptions: { ecmaVersion: 6 }
+        },
+
+        // Make sure we don't error for undeclared variables so as not to overlap with no-undef
+        {
+            code: "while(i) { (function() { i; }) }",
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
+        },
+        {
+            code: "do { (function() { i; }) } while (i)",
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
+        },
+        {
+            code: "for(;i;) { (function() { i; }) }",
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
+        },
+        {
+            code: "for(var a in i) { (function() { i; }) }",
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
+        },
+        {
+            code: "for(var a of i) { (function() { i; }) }",
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
+        },
+        {
+            code: "for await (var a of i) { (function() { i; }) }",
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
+        },
+
+        // Make sure we don't error on variables that look like they might be a loop variable but in fact aren't.
+        {
+            code: "var i = true; while(i) { (function() { i; }) }",
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
+        },
+        {
+            code: "var i = true; do { (function() { i; }) } while (i)",
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
+        },
+        {
+            code: "var i = true; for(;i;) { (function() { i; }) }",
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
+        },
+        {
+            code: "let i = true; while(i) { (function() { i; }) }",
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
+        },
+        {
+            code: "let i = true; do { (function() { i; }) } while (i)",
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
+        },
+        {
+            code: "let i = true; for(;i;) { (function() { i; }) }",
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
+        },
+        {
+            code: "const i = true; while(i) { (function() { i; }) }",
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
+        },
+        {
+            code: "const i = true; do { (function() { i; }) } while (i)",
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
+        },
+        {
+            code: "const i = true; for(;i;) { (function() { i; }) }",
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
         }
     ],
     invalid: [
+        ...loops.filter(loop => loop.invalid),
         {
             code: "for (var i=0; i<l; i++) { (function() { i; }) }",
             errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
@@ -130,6 +226,21 @@ ruleTester.run("no-loop-func", rule, {
             code: "for (var i of {}) { (function() { i; }) }",
             parserOptions: { ecmaVersion: 6 },
             errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
+        },
+        {
+            code: "for (var [a] of []) { (function() { a; }) }",
+            parserOptions: { ecmaVersion: 6 },
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'a'" }, type: "FunctionExpression" }]
+        },
+        {
+            code: "for (var [a = 5] of []) { (function() { a; }) }",
+            parserOptions: { ecmaVersion: 6 },
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'a'" }, type: "FunctionExpression" }]
+        },
+        {
+            code: "for (var {a} of []) { (function() { a; }) }",
+            parserOptions: { ecmaVersion: 6 },
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'a'" }, type: "FunctionExpression" }]
         },
         {
             code: "for (var i=0; i < l; i++) { (() => { i; }) }",
@@ -150,14 +261,6 @@ ruleTester.run("no-loop-func", rule, {
         },
         {
             code: "for (var i=0; i<l; (function() { i; })(), i++) { }",
-            errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
-        },
-        {
-            code: "while(i) { (function() { i; }) }",
-            errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
-        },
-        {
-            code: "do { (function() { i; }) } while (i)",
             errors: [{ messageId: "unsafeRefs", data: { varNames: "'i'" }, type: "FunctionExpression" }]
         },
 
@@ -229,6 +332,11 @@ ruleTester.run("no-loop-func", rule, {
         },
         {
             code: "let a; function foo() { a = 10; for (let x of xs) { (function() { a; }); } } foo();",
+            parserOptions: { ecmaVersion: 6 },
+            errors: [{ messageId: "unsafeRefs", data: { varNames: "'a'" }, type: "FunctionExpression" }]
+        },
+        {
+            code: "for (var a of []) { (function() { (function() { a; }) }) }",
             parserOptions: { ecmaVersion: 6 },
             errors: [{ messageId: "unsafeRefs", data: { varNames: "'a'" }, type: "FunctionExpression" }]
         }
