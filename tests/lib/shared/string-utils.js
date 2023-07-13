@@ -11,7 +11,7 @@
 
 const assert = require("chai").assert;
 
-const { upperCaseFirst, getGraphemeCount } = require("../../../lib/shared/string-utils");
+const { upperCaseFirst, getGraphemeCount, enumerateSplitPoints } = require("../../../lib/shared/string-utils");
 
 //------------------------------------------------------------------------------
 // Helpers
@@ -84,6 +84,45 @@ describe("getGraphemeCount", () => {
     Object.entries(expectedResults).forEach(([key, value]) => {
         it(`should return ${value} for ${escapeControlCharacters(key)}`, () => {
             assert.strictEqual(getGraphemeCount(key), value);
+        });
+    });
+});
+
+describe("enumerateSplitPoints", () => {
+
+    const expectedResults = [
+        { str: "", separator: " ", includeStart: false, includeEnd: false, expected: [] },
+        { str: "", separator: " ", includeStart: true, includeEnd: false, expected: [["", ""]] },
+        { str: "", separator: " ", includeStart: false, includeEnd: true, expected: [["", ""]] },
+        { str: "", separator: " ", includeStart: true, includeEnd: true, expected: [["", ""], ["", ""]] },
+
+        { str: "a", separator: " ", includeStart: false, includeEnd: false, expected: [] },
+        { str: "a", separator: " ", includeStart: true, includeEnd: false, expected: [["", "a"]] },
+        { str: "a", separator: " ", includeStart: false, includeEnd: true, expected: [["a", ""]] },
+        { str: "a", separator: " ", includeStart: true, includeEnd: true, expected: [["", "a"], ["a", ""]] },
+
+        { str: "a b", separator: " ", includeStart: false, includeEnd: false, expected: [["a", "b"]] },
+        { str: "a b", separator: " ", includeStart: true, includeEnd: false, expected: [["", "a b"], ["a", "b"]] },
+        { str: "a b", separator: " ", includeStart: false, includeEnd: true, expected: [["a", "b"], ["a b", ""]] },
+        { str: "a b", separator: " ", includeStart: true, includeEnd: true, expected: [["", "a b"], ["a", "b"], ["a b", ""]] },
+
+        { str: "a/ b", separator: "/ ", includeStart: false, includeEnd: false, expected: [["a", "b"]] },
+        { str: "a/ b", separator: "/ ", includeStart: true, includeEnd: false, expected: [["", "a/ b"], ["a", "b"]] },
+        { str: "a/ b", separator: "/ ", includeStart: false, includeEnd: true, expected: [["a", "b"], ["a/ b", ""]] },
+        { str: "a/ b", separator: "/ ", includeStart: true, includeEnd: true, expected: [["", "a/ b"], ["a", "b"], ["a/ b", ""]] },
+
+
+        { str: "a/ b/ c", separator: "/ ", includeStart: false, includeEnd: false, expected: [["a", "b/ c"], ["a/ b", "c"]] },
+        { str: "a/ b/ c", separator: "/ ", includeStart: true, includeEnd: false, expected: [["", "a/ b/ c"], ["a", "b/ c"], ["a/ b", "c"]] },
+        { str: "a/ b/ c", separator: "/ ", includeStart: false, includeEnd: true, expected: [["a", "b/ c"], ["a/ b", "c"], ["a/ b/ c", ""]] },
+        { str: "a/ b/ c", separator: "/ ", includeStart: true, includeEnd: true, expected: [["", "a/ b/ c"], ["a", "b/ c"], ["a/ b", "c"], ["a/ b/ c", ""]] }
+    ];
+
+    expectedResults.forEach(({ str, separator, includeStart, includeEnd, expected }) => {
+        it(`should return correct splits for "${str}" when splitting by "${separator}", includeStart: ${includeStart}, includeEnd: ${includeEnd}`, () => {
+            const splits = [...enumerateSplitPoints(str, separator, { includeStart, includeEnd })];
+
+            assert.deepStrictEqual(splits, expected);
         });
     });
 });
