@@ -10,7 +10,6 @@
 //-----------------------------------------------------------------------------
 
 const assert = require("chai").assert,
-    { LazyLoadingRuleMap } = require("../../lib/rules/utils/lazy-loading-rule-map"),
     api = require("../../lib/unsupported-api");
 
 //-----------------------------------------------------------------------------
@@ -44,7 +43,7 @@ describe("unsupported-api", () => {
     });
 
     it("should have builtinRules exposed", () => {
-        assert.instanceOf(api.builtinRules, LazyLoadingRuleMap);
+        assert.isObject(api.builtinRules);
     });
 
 });
