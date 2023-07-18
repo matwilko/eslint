@@ -17,6 +17,8 @@ const assert = require("chai").assert,
 
 const { Linter } = require("../../../lib/linter");
 const { FlatConfigArray } = require("../../../lib/config/flat-config-array");
+const { ESLint } = require("../../../lib/eslint");
+const { ecmaVersionToSpecRevision } = require("../../../lib/shared/ecma-versions");
 
 //------------------------------------------------------------------------------
 // Constants
@@ -4947,7 +4949,9 @@ var a = "test2";
                 assert.strictEqual(suppressedMessages.length, 0);
             });
 
-            it("the 'latest' is equal to espree.latestEcmaVersion", () => {
+            const latestSupportedEcmaVersion = ecmaVersionToSpecRevision(ESLint.latestSupportedEcmaVersion);
+
+            it(`the 'latest' is equal to ESLint.latestSupportedEcmaVersion (${latestSupportedEcmaVersion})`, () => {
                 let ecmaVersion = null;
                 const config = { rules: { "ecma-version": 2 }, parserOptions: { ecmaVersion: "latest" } };
 
@@ -4959,7 +4963,7 @@ var a = "test2";
                     })
                 });
                 linter.verify("", config);
-                assert.strictEqual(ecmaVersion, espree.latestEcmaVersion, "ecmaVersion should be 13");
+                assert.strictEqual(ecmaVersion, latestSupportedEcmaVersion, `ecmaVersion should be ${latestSupportedEcmaVersion}`);
             });
 
             it("the 'latest' is not normalized for custom parsers", () => {
