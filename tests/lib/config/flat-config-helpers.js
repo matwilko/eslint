@@ -10,7 +10,6 @@
 //-----------------------------------------------------------------------------
 
 const {
-    parseRuleId,
     getRuleFromConfig
 } = require("../../../lib/config/flat-config-helpers");
 const assert = require("chai").assert;

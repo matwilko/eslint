@@ -52,6 +52,30 @@ function createCustomTeardown({ cwd, files }) {
     return { prepare, cleanup, getPath };
 }
 
+/**
+ * Asserts the the given function throws an error matching the condition checked by the given matcher function.
+ * @param {function()} func The function to execute and expect to throw an error.
+ * @param {function(Error): boolean} errorMatcher The predicate function to check the error against.
+ * @param {string} errorDescription A text description of the condition that errorMatcher is checking.
+ * @returns {void}
+ * @throws If the given function does not throw an error, or if the thrown error does not match the given condition.
+ */
+function assertThrows(func, errorMatcher, errorDescription) {
+    try {
+        func();
+    } catch (err) {
+        if (!errorMatcher(err)) {
+            throw errorDescription
+                ? new Error(`Error thrown did not match the given condition: ${errorDescription}`)
+                : new Error("Error thrown did not match the given condition.");
+        }
+
+        return;
+    }
+
+    throw new Error("Expected an error to be thrown, but no error was thrown.");
+}
+
 //-----------------------------------------------------------------------------
 // Exports
 //-----------------------------------------------------------------------------
@@ -59,5 +83,6 @@ function createCustomTeardown({ cwd, files }) {
 module.exports = {
     unIndent,
     defineInMemoryFs,
-    createCustomTeardown
+    createCustomTeardown,
+    assertThrows
 };
