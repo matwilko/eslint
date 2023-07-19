@@ -60,6 +60,8 @@ module.exports = function(eleventyConfig) {
     // Filters
     //------------------------------------------------------------------------------
 
+    eleventyConfig.addFilter("includes", (arr, value) => arr.includes(value));
+
     eleventyConfig.addFilter("limitTo", (arr, limit) => arr.slice(0, limit));
 
     eleventyConfig.addFilter("jsonify", variable => JSON.stringify(variable));

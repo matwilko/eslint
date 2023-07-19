@@ -1,47 +1,24 @@
 {% from 'components/rule-list.macro.html' import ruleList %}
 
 {%- macro rule(params) -%}
-<article class="rule {% if params.deprecated == true %}rule--deprecated{% endif %} {% if params.removed == true %}rule--removed{% endif %}">
-    <div class="rule__content">
-        {%- if params.deprecated == true -%}
-        <p class="rule__name">
+<a href="{{ ['/rules/', params.name] | join | url }}" class="rule{{ ' deprecated' if params.deprecated }}{{ ' removed' if params.removed }}{{ 'recommended' if params.recommended }}{{ ' fixable' if params.fixable }}{{ ' hasSuggestions' if params.hasSuggestions }}{{ 'hasReplacement' if params.replacedBy }}">
+    <p>{{ params | dump }}</p>
+    <div class="content">
+        <p class="name">
             {{ params.name }}
-            <span class="rule__status">deprecated</span>
+            <span class="deprecated">deprecated</span>
+            <span class="removed">removed</span>
         </p>
-        {%- if params.replacedBy|length -%}
-        <p class="rule__description">Replaced by {{ ruleList({ rules: params.replacedBy }) }}</p>
-        {%- else -%}<p class="rule__description">{{ params.description }}</p>
-        {%- endif -%}
-        {%- elseif params.removed == true -%}
-        <p class="rule__name">
-            {{ params.name }}
-            <span class="rule__status">removed</span>
-        </p>
-        {%- if params.replacedBy -%}
-        <p class="rule__description">Replaced by {{ ruleList({ rules: params.replacedBy }) }}</p>
-        {%- else -%}<p class="rule__description">{{ params.description }}</p>
-        {%- endif -%}
-        {%- else -%}
-        <a href="{{ ['/rules/', params.name] | join | url }}" class="rule__name">{{ params.name }}</a>
-        <p class="rule__description">{{ params.description }}</p>
-        {%- endif -%}
+        <p class="replacedBy">Replaced by {{ ruleList({ rules: params.replacedBy }) }}</p>
+        <p class="description">{{ params.description }}</p>
     </div>
-    <div class="rule__categories">
-        <span class="visually-hidden">Categories:</span>
-        {%- if (params.deprecated) or (params.removed) -%}
-            <p class="rule__categories__type">❌</p>
-            {%- else -%}
-            <p class="rule__categories__type" {% if params.categories.recommended == false %}aria-hidden="true" {%- endif -%}>
-            ✅ <span class="visually-hidden">Extends</span>
-        </p>
-        {%- endif -%}
 
-        <p class="rule__categories__type" {% if params.categories.fixable == false %}aria-hidden="true" {%- endif -%}>
-            🔧 <span class="visually-hidden">Fix</span>
-        </p>
-        <p class="rule__categories__type" {% if params.categories.hasSuggestions == false %}aria-hidden="true" {%- endif -%}>
-            💡 <span class="visually-hidden">Suggestions</span>
-        </p>
+    <div class="categories">
+        <span class="donotuse" title="Do Not Use">❌</span>
+        <span class="recommended" title="Recommended" aria-hidden="{{ params.recommended }}">✅</span>
+        <span class="fixable" title="Fixable" aria-hidden="{{ not params.removed and params.fixable }}">🔧</span>
+        <span class="hasSuggestions" title="Has Suggestions" aria-hidden="{{ not params.removed and params.hasSuggestions }}">💡</span>
     </div>
-</article>
+
+</a>
 {%- endmacro -%}
